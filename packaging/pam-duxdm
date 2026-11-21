@@ -1,0 +1,6 @@
+# PAM configuration for duxdm — same stack as login/getty.
+# Note: @include must be unprefixed (no module type) — Debian syntax.
+@include common-auth
+@include common-account
+@include common-password
+@include common-session

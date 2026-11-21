@@ -1,0 +1,9 @@
+[package]
+name = "duxdm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libc = "0.2.191"
+nix = { version = "0.32.0", features = ["term", "user", "fs", "process"] }
+pam = "0.8.0"
