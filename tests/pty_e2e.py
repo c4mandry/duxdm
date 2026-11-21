@@ -22,11 +22,14 @@ import sys
 import termios
 import time
 
-BIN = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "target",
-    "release",
-    "duxdm",
+BIN = os.environ.get(
+    "DUXDM_BIN",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "target",
+        "release",
+        "duxdm",
+    ),
 )
 USER = "duxdmtest"
 PW = "duxdmtest123"
