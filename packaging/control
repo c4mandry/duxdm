@@ -1,14 +1,15 @@
 Package: duxdm
-Version: 0.1.0-1
+Version: 0.1.1-1
 Section: x11
 Priority: optional
 Architecture: amd64
 Maintainer: Robert Põldmaa <c4mandry@users.noreply.github.com>
 Depends: libc6 (>= 2.34), libpam0g
-Recommends: xinit
+Recommends: xserver-xorg-core
 Description: simple, fast TUI display manager for the Linux console
  duxdm is a getty-like display manager: type a username and password,
  then pick a desktop environment or window manager from a menu.
- Wayland sessions are started directly on the current VT; X11 sessions
- go through xinit. No GUI toolkit, no config files — just a fast,
- dependency-light console login.
+ Wayland sessions run directly on the current VT; X11 sessions get a
+ root-owned X server started by duxdm (display-manager style, no xinit
+ needed) while the session runs as the user. No GUI toolkit, no config
+ files — just a fast, dependency-light console login.

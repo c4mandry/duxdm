@@ -24,7 +24,7 @@ mkdir -p /tmp/duxdm-test/wayland-sessions /tmp/duxdm-test/xsessions
 cat > /tmp/duxdm-test/wayland-sessions/test.desktop <<'EOF'
 [Desktop Entry]
 Name=TestSession
-Exec=/bin/echo DUXDM-SESSION-RAN
+Exec=/bin/sh -c 'echo DUXDM-SESSION-RAN; [ -n "$XDG_RUNTIME_DIR" ] && echo RUNTIME-OK; [ -n "$XDG_SEAT" ] && echo SEAT-OK; [ -n "$XDG_VTNR" ] && echo VTNR-OK'
 EOF
 cat > /tmp/duxdm-test/xsessions/broken.desktop <<'EOF'
 [Desktop Entry]

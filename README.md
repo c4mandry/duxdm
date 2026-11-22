@@ -13,11 +13,27 @@ password: ******
 ```
 
 - **Wayland** sessions are executed directly on the current VT.
-- **X11** sessions run through `xinit`.
+- **X11** sessions get a root-owned X server started by duxdm (no xinit).
 - Authentication via **PAM** (the same `common-auth` stack as `login`/`getty`).
 - One small Rust binary (~650 KB), no GUI toolkit, no config files, no bloat.
 
 ## Install (Debian/Ubuntu)
+
+One command:
+
+```sh
+curl -fsSL https://webnotes.work/duxdm-repo/install.sh | sudo sh
+```
+
+That adds the signed apt repository and installs duxdm. From then on it is
+an ordinary apt package:
+
+```sh
+sudo apt install duxdm   # on any machine with the repo added
+sudo apt upgrade         # updates
+```
+
+Manual equivalent (adds the same repo without running the script):
 
 ```sh
 curl -fsSL https://webnotes.work/duxdm-repo/key.gpg | sudo tee /etc/apt/keyrings/duxdm.asc
@@ -30,8 +46,8 @@ The package ships `/usr/bin/duxdm`, `/etc/pam.d/duxdm` and
 install. If you also have GDM/LightDM installed, duxdm takes over tty1 —
 disable it again with `sudo systemctl disable duxdm.service`.
 
-X11 sessions additionally need the `xinit` package; Wayland sessions need
-nothing extra.
+X11 sessions additionally need an X server (`xserver-xorg-core`; your WM/DE
+usually pulls it in); Wayland sessions need nothing extra.
 
 ## Usage
 
@@ -51,14 +67,24 @@ up in the menu automatically.
   turned off for the password. ISIG stays on so `^C` raises SIGINT; duxdm
   installs flag-setting signal handlers (no `SA_RESTART`), so the blocked
   read returns `EINTR` and the prompt cancels cleanly. SIGTERM/SIGHUP/
-  SIGQUIT behave the same way — the tty is always restored on the way out.
+  SIGQUIT behave the same way — the tty is always restored on the way out,
+  and the console is reset to text mode (KDSETMODE/KDSKBMODE) so a crashed
+  session can never leave the screen black or the keyboard in raw mode.
 - **Session menu:** raw mode, arrow keys, instant selection.
-- **Session start:** after PAM authentication duxdm forks. The child
-  restores the pre-duxdm termios, drops privileges
-  (`initgroups` → `setgid` → `setuid`) and execs the session. Wayland runs
-  directly; X11 is wrapped in `xinit` on the current VT. The parent waits
-  for the session, closes the PAM session on logout and returns to the
-  login screen.
+- **Session environment:** duxdm mirrors a getty+pam_systemd login — it
+  creates `/run/user/<uid>` (0700) and sets `XDG_RUNTIME_DIR` (Wayland
+  compositors need it for their socket), `DBUS_SESSION_BUS_ADDRESS`,
+  `XDG_SEAT`, `XDG_VTNR`, HOME/USER/SHELL/PATH.
+- **Wayland:** duxdm forks; the child drops privileges
+  (`initgroups` → `setgid` → `setuid`) and execs the compositor directly on
+  the current VT.
+- **X11:** duxdm starts the X server itself, as root, on the current VT
+  with a fresh Xauthority cookie, then runs the session as the user with
+  `DISPLAY`/`XAUTHORITY` set — the standard display-manager architecture,
+  no dependence on logind VT handover or Xorg.wrap. When the session ends,
+  duxdm stops the X server and cleans up the auth files.
+- The parent waits for the session, closes the PAM session on logout and
+  returns to the login screen.
 
 ## Building from source
 

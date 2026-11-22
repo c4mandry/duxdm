@@ -1,7 +1,7 @@
 //! Discover installed desktop sessions from the freedesktop session dirs.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct SessionEntry {
@@ -90,9 +90,4 @@ pub fn discover() -> Vec<SessionEntry> {
         false,
     ));
     out
-}
-
-/// Where the X11 session's temporary xinitrc lives.
-pub fn xinitrc_path() -> PathBuf {
-    PathBuf::from("/tmp/duxdm-xinitrc")
 }

@@ -61,6 +61,20 @@ pub fn apply_login_mode(state: &TerminalState) {
     t.local_flags &= !(LocalFlags::ICANON | LocalFlags::ECHO | LocalFlags::ECHONL);
     t.local_flags |= LocalFlags::ICANON | LocalFlags::ECHO | LocalFlags::ISIG;
     let _ = tcsetattr(as_fd(state.fd), SetArg::TCSANOW, &t);
+
+    // A crashed session can leave the console in graphics mode or the
+    // keyboard in raw (scancode) mode: text would not render, keys would
+    // type garbage, and Ctrl+Alt+Fn switching would misbehave. Reset both
+    // so every login screen starts from a sane console.
+    // (VT console ioctls from <linux/kd.h> — not in the libc crate.)
+    const KDSETMODE: libc::c_ulong = 0x4B3A;
+    const KD_TEXT: libc::c_ulong = 0x00;
+    const KDSKBMODE: libc::c_ulong = 0x4B45;
+    const K_XLATE: libc::c_ulong = 0x01;
+    unsafe {
+        libc::ioctl(state.fd, KDSETMODE, KD_TEXT);
+        libc::ioctl(state.fd, KDSKBMODE, K_XLATE);
+    }
 }
 
 fn set_raw(state: &TerminalState) -> io::Result<()> {

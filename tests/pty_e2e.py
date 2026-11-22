@@ -81,12 +81,26 @@ def wait_echo_off(fd, timeout=3.0):
     return False
 
 
+def wait_echo_on(fd, timeout=3.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if echo_state(fd):
+            return True
+        time.sleep(0.05)
+    return False
+
+
 def spawn():
     pid, master = pty.fork()
     if pid == 0:
         os.environ["DUXDM_WAYLAND_SESSIONS"] = "/tmp/duxdm-test/wayland-sessions"
         os.environ["DUXDM_XSESSIONS"] = "/tmp/duxdm-test/xsessions"
         os.environ["TERM"] = "linux"
+        # Test hook: the X11 path would exec a real Xorg (and grab the
+        # host's VT — dangerous here); /bin/false fails instantly so the
+        # session child times out waiting for the X socket and duxdm
+        # returns to the login screen cleanly.
+        os.environ["DUXDM_XSERVER"] = "/bin/false"
         os.execv(BIN, [BIN])
     return pid, master
 
@@ -133,7 +147,7 @@ def main():
         send(master, b"WRONG\r")
         expect_buffered(master, "Login incorrect", label="bad password rejected")
         expect_buffered(master, "login:", label="re-prompt after bad password")
-        check("echo restored after bad login", echo_state(master))
+        check("echo restored after bad login", wait_echo_on(master))
 
         # 3. correct password
         send(master, USER.encode() + b"\r")
@@ -147,12 +161,29 @@ def main():
         # 4. start the fake wayland session (entry 1)
         send(master, b"1\r")
         expect_buffered(master, "DUXDM-SESSION-RAN", label="session executed")
+        expect_buffered(master, "RUNTIME-OK", label="XDG_RUNTIME_DIR set")
+        expect_buffered(master, "SEAT-OK", label="XDG_SEAT set")
+        expect_buffered(master, "VTNR-OK", label="XDG_VTNR set")
         pending = b""  # drop stale output; wait for the FRESH login prompt
         expect_buffered(master, "login:", label="back at login after session")
-        check("echo restored after session", echo_state(master))
+        check("echo restored after session", wait_echo_on(master))
+
+        # 4b. X11 entry: server is stubbed to /bin/false, so the session
+        # child times out waiting for the X socket and duxdm must return
+        # to the login screen instead of hanging or crashing.
+        send(master, USER.encode() + b"\r")
+        expect_buffered(master, "password:", label="password prompt (x11)")
+        check("password echo off (x11)", wait_echo_off(master))
+        send(master, PW.encode() + b"\r")
+        expect_buffered(master, "choose a session", label="session menu (x11)")
+        send(master, b"2\r")
+        expect_buffered(master, "login:", label="back at login after failed X11",
+                        timeout=20.0)
+        check("echo restored after failed X11", wait_echo_on(master))
 
         # 5. ^C while entering the password cancels cleanly — the classic
         #    trap: the tty must not be left with echo off afterwards.
+        pending = b""  # fresh screen for this step
         send(master, USER.encode() + b"\r")
         expect_buffered(master, "password:", label="password prompt (^C test)")
         check("password echo off (^C test)", wait_echo_off(master))

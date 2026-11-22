@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 DEB="duxdm_${VERSION}-1_amd64.deb"
 
 cargo build --release
